@@ -1,0 +1,13 @@
+[project]
+name = "mcp-test"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openmeteo-requests>=1.7.2",
+    "pydantic-ai>=1.0.10",
+    "pydantic-ai-slim[mcp,openai]>=1.0.10",
+    "supabase>=2.19.0",
+    "yfinance>=0.2.66",
+]
