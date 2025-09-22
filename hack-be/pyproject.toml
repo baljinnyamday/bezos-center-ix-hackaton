@@ -28,6 +28,11 @@ dependencies = [
     "asyncpg>=0.30.0",
     "aiofiles>=24.1.0",
     "pandas>=2.3.1",
+    "openmeteo-requests>=1.7.2",
+    "pydantic-ai>=1.0.10",
+    "pydantic-ai-slim[mcp,openai]>=1.0.10",
+    "supabase>=2.19.0",
+    "yfinance>=0.2.66",
 ]
 
 [tool.uv]
@@ -54,20 +59,20 @@ exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
     "ARG001", # unused arguments in functions
 ]
 ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
-    "W191",  # indentation contains tabs
-    "B904",  # Allow raising exceptions without from e, for HTTPException
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "W191", # indentation contains tabs
+    "B904", # Allow raising exceptions without from e, for HTTPException
 ]
 
 [tool.ruff.lint.pyupgrade]
