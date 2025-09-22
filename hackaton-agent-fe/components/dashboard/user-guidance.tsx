@@ -70,29 +70,19 @@ export function UserGuidance() {
     const decoder = new TextDecoder();
 
     if (!reader) return;
-
+    let tempText = "";
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       const chunk = decoder.decode(value);
       setText((prev) => prev + chunk);
+      tempText += chunk;
     }
-    setMessages((prev) => [...prev, { type: "ai", content: text, timestamp: new Date() }]);
+
+    setMessages((prev) => [...prev, { type: "ai", content: tempText, timestamp: new Date() }]);
+    setText("");
     setLoading(false);
   };
-
-  // const { messages, input, handleInputChange, handleSubmit } = useChat({
-  //   api: `${process.env.NEXT_PUBLIC_BACKEND_URI}/stream/chat/`,
-  // });
-
-  // const [messages, setMessages] = useState<ChatMessage[]>([
-  //   {
-  //     id: "1",
-  //     type: "ai",
-  //     content: `Hello! I'm your AI operations assistant. I can help you analyze data, make decisions about production scheduling, inventory management, and supply chain optimization. How can I assist you today? ${process.env.NEXT_PUBLIC_BACKEND_URI}`,
-  //     timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-  //   },
-  // ]);
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isTyping, setIsTyping] = useState(false);
