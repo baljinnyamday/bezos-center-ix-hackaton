@@ -213,7 +213,7 @@ export function SupplyChainFlow() {
   };
 
   return (
-    <Card className="xl:h-[650px] 3xl:h-[750px]">
+    <Card className="h-[750px]">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
