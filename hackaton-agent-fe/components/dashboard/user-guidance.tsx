@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import ReactMarkdown from "react-markdown";
 
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,7 @@ import {
   User,
 } from "lucide-react";
 import Image from "next/image";
-
+import { useChat } from "ai/react";
 interface UploadedFile {
   name: string;
   size: number;
@@ -42,32 +43,63 @@ interface ChatMessage {
 
 export function UserGuidance() {
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState([
     {
-      id: "1",
       type: "ai",
-      content:
-        "Hello! I'm your AI operations assistant. I can help you analyze data, make decisions about production scheduling, inventory management, and supply chain optimization. How can I assist you today?",
+      content: `Hello! I'm your AI operations assistant. I can help you analyze data, make decisions about production scheduling, inventory management, and supply chain optimization. How can I assist you today?`,
       timestamp: new Date(Date.now() - 300000), // 5 minutes ago
     },
   ]);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const startStream = async () => {
+    setText("");
+    setLoading(true);
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URI}/stream/chat/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: message,
+      }),
+    });
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) return;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      setText((prev) => prev + chunk);
+    }
+    setMessages((prev) => [...prev, { type: "ai", content: text, timestamp: new Date() }]);
+    setLoading(false);
+  };
+
+  // const { messages, input, handleInputChange, handleSubmit } = useChat({
+  //   api: `${process.env.NEXT_PUBLIC_BACKEND_URI}/stream/chat/`,
+  // });
+
+  // const [messages, setMessages] = useState<ChatMessage[]>([
+  //   {
+  //     id: "1",
+  //     type: "ai",
+  //     content: `Hello! I'm your AI operations assistant. I can help you analyze data, make decisions about production scheduling, inventory management, and supply chain optimization. How can I assist you today? ${process.env.NEXT_PUBLIC_BACKEND_URI}`,
+  //     timestamp: new Date(Date.now() - 300000), // 5 minutes ago
+  //   },
+  // ]);
+
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const mockAIResponses = [
-    "Based on the data you've provided, I can see some interesting patterns in your operations. Let me analyze the key metrics and provide recommendations.",
-    "I've processed your files and identified several optimization opportunities. Would you like me to focus on production efficiency or inventory management first?",
-    "The demand forecast shows a 15% increase next quarter. I recommend adjusting your production schedule accordingly. Here are my specific suggestions:",
-    "I notice some supply chain bottlenecks in your data. Let me break down the critical path issues and propose solutions.",
-    "Your inventory turnover rates suggest we could optimize stock levels for items A, B, and C. Shall I create a detailed rebalancing plan?",
-    "The production data indicates Line 2 has 8% higher efficiency than Line 1. We could redistribute workloads to maximize output.",
-    "Weather patterns and seasonal trends suggest increasing raw material orders by 12% for next month to avoid potential shortages.",
-    "I've identified cost-saving opportunities totaling approximately $47K monthly through better supplier negotiations and timing.",
-  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -114,34 +146,6 @@ export function UserGuidance() {
     setUploadedFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
 
-  const generateAIResponse = (userMessage: string, hasFiles: boolean): string => {
-    if (hasFiles) {
-      return (
-        "I've analyzed your uploaded files. " + mockAIResponses[Math.floor(Math.random() * mockAIResponses.length)]
-      );
-    }
-
-    const lowerMessage = userMessage.toLowerCase();
-
-    if (lowerMessage.includes("production") || lowerMessage.includes("manufacturing")) {
-      return "For production optimization, I recommend analyzing your current capacity utilization and identifying bottlenecks. Based on typical patterns, you could potentially increase efficiency by 12-18% through better scheduling.";
-    }
-
-    if (lowerMessage.includes("inventory") || lowerMessage.includes("stock")) {
-      return "I can help optimize your inventory levels. The ideal approach is to balance carrying costs with stockout risks. Would you like me to analyze your current turnover rates and suggest reorder points?";
-    }
-
-    if (lowerMessage.includes("forecast") || lowerMessage.includes("demand")) {
-      return "Demand forecasting is crucial for planning. I use machine learning models that consider historical patterns, seasonality, and external factors. Upload your historical sales data and I'll create accurate forecasts for the next 3-6 months.";
-    }
-
-    if (lowerMessage.includes("cost") || lowerMessage.includes("saving")) {
-      return "I've identified several cost optimization opportunities: 1) Supplier negotiation timing, 2) Energy usage patterns, 3) Waste reduction strategies. Which area would you like to explore first?";
-    }
-
-    return mockAIResponses[Math.floor(Math.random() * mockAIResponses.length)];
-  };
-
   const sendMessage = async () => {
     if (!message.trim() && uploadedFiles.length === 0) return;
 
@@ -153,23 +157,11 @@ export function UserGuidance() {
       files: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
     setMessage("");
     setUploadedFiles([]);
     setIsTyping(true);
-
-    // Simulate AI thinking time
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: generateAIResponse(userMessage.content, !!userMessage.files?.length),
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
+    setMessages((prev) => [...prev, userMessage]);
+    startStream();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -206,7 +198,7 @@ export function UserGuidance() {
   const hasActiveFiles = uploadedFiles.length > 0;
   const hasMessage = message.trim().length > 0;
   const hasActivity = hasActiveFiles || hasMessage || isTyping;
-  const unreadCount = messages.filter((m) => m.type === "ai").length > 1 ? 1 : 0;
+  const unreadCount = 3;
 
   return (
     <Card
@@ -268,8 +260,8 @@ export function UserGuidance() {
         <CardContent className="space-y-4 h-[calc(100vh-5rem)] flex flex-col">
           {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto space-y-4 pb-4 pt-24">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex gap-3 ${msg.type === "user" ? "flex-row-reverse" : ""}`}>
+            {messages.map((msg, index) => (
+              <div key={index} className={`flex gap-3 ${msg.type === "user" ? "flex-row-reverse" : ""}`}>
                 <div
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                     msg.type === "user" ? "bg-blue-500 text-white" : "bg-muted"
@@ -283,23 +275,29 @@ export function UserGuidance() {
                       msg.type === "user" ? "bg-blue-500 text-white rounded-br-sm" : "bg-muted rounded-bl-sm"
                     }`}
                   >
-                    <div className="text-sm">{msg.content}</div>
-                    {msg.files && msg.files.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {msg.files.map((file, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs opacity-90">
-                            {getFileIcon(file.type)}
-                            <span>{file.name}</span>
-                            {getStatusIcon(file.status)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="text-sm">
+                      <ReactMarkdown className="prose lg:prose" children={msg.content} />
+                    </div>
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">{formatTime(msg.timestamp)}</div>
                 </div>
               </div>
             ))}
+            {text && (
+              <div className={`flex gap-3`}>
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-muted`}>
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className={`flex-1`}>
+                  <div className={`inline-block max-w-[80%] p-3 rounded-lg bg-muted rounded-bl-sm`}>
+                    <div className="text-sm">
+                      <ReactMarkdown className="prose lg:prose" children={text} />
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{formatTime(new Date())}</div>
+                </div>
+              </div>
+            )}
 
             {isTyping && (
               <div className="flex gap-3">
